@@ -13,6 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Use LLVM 19 (fmt 11.0.2 does not compile with Clang 20)
+        shell: pwsh
+        run: |
+          choco install llvm --version=19.1.7 --allow-downgrade --force -y
+          & "C:\Program Files\LLVM\bin\clang++.exe" --version
+
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
