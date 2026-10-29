@@ -1,7 +1,7 @@
 {
-	"geode": "4.0.0",
+	"geode": "5.11.2",
 	"gd": {
-		"win": "2.2074"
+		"win": "2.2081"
 	},
 	"id": "yourname.firefox-pause",
 	"name": "Firefox Pause",
