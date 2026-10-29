@@ -13,6 +13,7 @@ if (NOT DEFINED ENV{GEODE_SDK})
 	message(FATAL_ERROR "Unable to find Geode SDK! Please define GEODE_SDK environment variable.")
 endif()
 
+add_compile_definitions(_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH)
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
 if (WIN32)
