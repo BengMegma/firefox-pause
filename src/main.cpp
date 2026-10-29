@@ -1,9 +1,7 @@
-// winsock must come before anything that pulls in windows.h
-#include <winsock2.h>
-#include <ws2tcpip.h>
 
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <winsock.h>
 
 using namespace geode::prelude;
 
@@ -25,7 +23,7 @@ static void sendCommand(char const* cmd) {
 	sockaddr_in addr{};
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(static_cast<u_short>(Mod::get()->getSettingValue<int64_t>("port")));
-	inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
 	sendto(sock, cmd, static_cast<int>(strlen(cmd)), 0,
 	       reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
