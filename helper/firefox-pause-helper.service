@@ -1,0 +1,9 @@
+[Unit]
+Description=Firefox Pause helper for Geometry Dash
+
+[Service]
+ExecStart=%h/.local/bin/firefox_pause_helper.py
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

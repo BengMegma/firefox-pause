@@ -1,0 +1,45 @@
+{
+	"geode": "4.0.0",
+	"gd": {
+		"win": "2.2074"
+	},
+	"id": "yourname.firefox-pause",
+	"name": "Firefox Pause",
+	"version": "v1.0.0",
+	"developer": "yourname",
+	"description": "Pauses Firefox media when you pass a chosen percent in a level.",
+	"settings": {
+		"enabled": {
+			"type": "bool",
+			"name": "Enabled",
+			"default": true
+		},
+		"percent": {
+			"type": "int",
+			"name": "Pause at percent",
+			"description": "Pause Firefox once you reach this percent.",
+			"default": 50,
+			"min": 1,
+			"max": 100,
+			"control": { "slider": true, "input": true }
+		},
+		"resume-on-death": {
+			"type": "bool",
+			"name": "Resume on death/restart",
+			"default": true
+		},
+		"resume-on-exit": {
+			"type": "bool",
+			"name": "Resume on level exit/complete",
+			"default": true
+		},
+		"port": {
+			"type": "int",
+			"name": "Helper UDP port",
+			"description": "Must match the port used by the Linux helper script.",
+			"default": 48620,
+			"min": 1024,
+			"max": 65535
+		}
+	}
+}
