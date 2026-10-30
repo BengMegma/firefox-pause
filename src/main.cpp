@@ -1,6 +1,7 @@
 
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/PauseLayer.hpp>
 #include <Geode/loader/GameEvent.hpp>
 #include <Geode/loader/SettingV3.hpp>
 #include <winsock.h>
@@ -30,6 +31,24 @@ static void sendCommand(char const* cmd) {
 	sendto(sock, cmd, static_cast<int>(strlen(cmd)), 0,
 	       reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
 	closesocket(sock);
+}
+
+// Flip the "enabled" setting (used by the keybind and the pause-menu button)
+static void toggleFirefoxPause() {
+	auto mod = Mod::get();
+	bool nowEnabled = !mod->getSettingValue<bool>("enabled");
+	mod->setSettingValue<bool>("enabled", nowEnabled);
+
+	if (!nowEnabled) {
+		// helper only resumes players it paused itself, so this is safe
+		sendCommand("play");
+	}
+
+	Notification::create(
+		nowEnabled ? "Firefox Pause: ON" : "Firefox Pause: OFF",
+		nowEnabled ? NotificationIcon::Success : NotificationIcon::Warning,
+		1.0f
+	)->show();
 }
 
 class $modify(FirefoxPausePlayLayer, PlayLayer) {
@@ -83,21 +102,49 @@ class $modify(FirefoxPausePlayLayer, PlayLayer) {
 // Keybind: toggle the mod on/off while playing
 $on_game(Loaded) {
 	listenForKeybindSettingPresses("toggle-keybind", [](Keybind const&, bool down, bool repeat, double) {
-		if (!down || repeat) return;
-
-		auto mod = Mod::get();
-		bool nowEnabled = !mod->getSettingValue<bool>("enabled");
-		mod->setSettingValue<bool>("enabled", nowEnabled);
-
-		if (!nowEnabled) {
-			// helper only resumes players it paused itself, so this is safe
-			sendCommand("play");
-		}
-
-		Notification::create(
-			nowEnabled ? "Firefox Pause: ON" : "Firefox Pause: OFF",
-			nowEnabled ? NotificationIcon::Success : NotificationIcon::Warning,
-			1.0f
-		)->show();
+		if (down && !repeat) toggleFirefoxPause();
 	});
 }
+
+// Pause-menu button
+class $modify(FirefoxPausePauseLayer, PauseLayer) {
+	void customSetup() {
+		PauseLayer::customSetup();
+
+		CCMenuItemToggler* toggle = nullptr;
+		auto onSpr = CCSprite::createWithSpriteFrameName("GJ_musicOnBtn_001.png");
+		auto offSpr = CCSprite::createWithSpriteFrameName("GJ_musicOffBtn_001.png");
+		if (onSpr && offSpr) {
+			onSpr->setScale(0.8f);
+			offSpr->setScale(0.8f);
+			toggle = CCMenuItemToggler::create(
+				offSpr, onSpr, this, menu_selector(FirefoxPausePauseLayer::onToggleFirefoxPause)
+			);
+		}
+		else {
+			// sprite frames not found: fall back to the standard checkbox
+			toggle = CCMenuItemToggler::createWithStandardSprites(
+				this, menu_selector(FirefoxPausePauseLayer::onToggleFirefoxPause), 0.7f
+			);
+		}
+		toggle->toggle(Mod::get()->getSettingValue<bool>("enabled"));
+		toggle->setID("firefox-pause-toggle"_spr);
+
+		CCNode* menu = this->getChildByID("right-button-menu");
+		if (!menu) {
+			// couldn't find the vanilla menu: make our own in the bottom-right corner
+			auto win = CCDirector::get()->getWinSize();
+			auto newMenu = CCMenu::create();
+			newMenu->setPosition({win.width - 30.f, 90.f});
+			this->addChild(newMenu);
+			menu = newMenu;
+		}
+		menu->addChild(toggle);
+		menu->updateLayout();
+	}
+
+	void onToggleFirefoxPause(CCObject*) {
+		// the toggler flips its own visual; we just flip the setting
+		toggleFirefoxPause();
+	}
+};
