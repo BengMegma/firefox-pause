@@ -1,6 +1,8 @@
 
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/loader/GameEvent.hpp>
+#include <Geode/loader/SettingV3.hpp>
 #include <winsock.h>
 
 using namespace geode::prelude;
@@ -47,7 +49,11 @@ class $modify(FirefoxPausePlayLayer, PlayLayer) {
 		PlayLayer::postUpdate(dt);
 
 		auto mod = Mod::get();
-		if (!mod->getSettingValue<bool>("enabled")) return;
+		if (!mod->getSettingValue<bool>("enabled")) {
+			// turned off (e.g. via keybind): forget any pause we sent
+			m_fields->m_sentPause = false;
+			return;
+		}
 		if (m_fields->m_sentPause) return;
 		if (m_player1 && m_player1->m_isDead) return;
 
@@ -73,3 +79,25 @@ class $modify(FirefoxPausePlayLayer, PlayLayer) {
 		PlayLayer::onQuit();
 	}
 };
+
+// Keybind: toggle the mod on/off while playing
+$on_game(Loaded) {
+	listenForKeybindSettingPresses("toggle-keybind", [](Keybind const&, bool down, bool repeat, double) {
+		if (!down || repeat) return;
+
+		auto mod = Mod::get();
+		bool nowEnabled = !mod->getSettingValue<bool>("enabled");
+		mod->setSettingValue<bool>("enabled", nowEnabled);
+
+		if (!nowEnabled) {
+			// helper only resumes players it paused itself, so this is safe
+			sendCommand("play");
+		}
+
+		Notification::create(
+			nowEnabled ? "Firefox Pause: ON" : "Firefox Pause: OFF",
+			nowEnabled ? NotificationIcon::Success : NotificationIcon::Warning,
+			1.0f
+		)->show();
+	});
+}

@@ -14,6 +14,13 @@
 			"name": "Enabled",
 			"default": true
 		},
+		"toggle-keybind": {
+			"type": "keybind",
+			"name": "Toggle keybind",
+			"description": "Press this key to turn Firefox Pause on or off while playing.",
+			"default": "F8",
+			"category": "gameplay"
+		},
 		"percent": {
 			"type": "int",
 			"name": "Pause at percent",
@@ -21,7 +28,10 @@
 			"default": 50,
 			"min": 1,
 			"max": 100,
-			"control": { "slider": true, "input": true }
+			"control": {
+				"slider": true,
+				"input": true
+			}
 		},
 		"resume-on-death": {
 			"type": "bool",
