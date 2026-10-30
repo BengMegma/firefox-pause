@@ -144,7 +144,7 @@ $on_game(Loaded) {
 
 // Save the percent per level whenever it's changed while inside a level
 $on_mod(Loaded) {
-	listenForSettingChanges("percent", [](int64_t value) {
+	listenForSettingChanges<int64_t>("percent", [](int64_t value) {
 		if (value == s_lastApplied) return;   // our own change
 		auto pl = PlayLayer::get();
 		if (!pl || !pl->m_level) return;      // not in a level
@@ -155,7 +155,7 @@ $on_mod(Loaded) {
 	});
 
 	// If the default changes while in a level that has no saved percent, follow it
-	listenForSettingChanges("default-percent", [](int64_t) {
+	listenForSettingChanges<int64_t>("default-percent", [](int64_t) {
 		auto pl = PlayLayer::get();
 		if (pl && pl->m_level) applyPercentForLevel(pl->m_level);
 	});
