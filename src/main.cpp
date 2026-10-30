@@ -2,6 +2,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
+#include <Geode/ui/GeodeUI.hpp>
 #include <Geode/loader/GameEvent.hpp>
 #include <Geode/loader/SettingV3.hpp>
 #include <winsock.h>
@@ -51,10 +52,45 @@ static void toggleFirefoxPause() {
 	)->show();
 }
 
+// ---- per-level percent ----
+// Key that identifies a level: its online ID, or its name for local/editor levels.
+static std::string levelKeyFor(GJGameLevel* level) {
+	if (!level) return "";
+	int id = level->m_levelID.value();
+	if (id > 0) return fmt::format("id-{}", id);
+	return fmt::format("local-{}", std::string(level->m_levelName));
+}
+
+// Last value we wrote into the "percent" setting ourselves (so we don't
+// mistake our own change for the user editing it).
+static int64_t s_lastApplied = -1;
+
+// Load this level's saved percent (or the default) into the "percent" setting.
+static void applyPercentForLevel(GJGameLevel* level) {
+	auto mod = Mod::get();
+	int64_t value = mod->getSettingValue<int64_t>("default-percent");
+
+	auto key = levelKeyFor(level);
+	if (!key.empty()) {
+		int64_t saved = mod->getSavedValue<int64_t>("level-percent-" + key, -1);
+		if (saved >= 1 && saved <= 100) value = saved;
+	}
+
+	s_lastApplied = value;
+	if (mod->getSettingValue<int64_t>("percent") != value) {
+		mod->setSettingValue<int64_t>("percent", value);
+	}
+}
+
 class $modify(FirefoxPausePlayLayer, PlayLayer) {
 	struct Fields {
 		bool m_sentPause = false;
 	};
+
+	void setupHasCompleted() {
+		PlayLayer::setupHasCompleted();
+		applyPercentForLevel(m_level);
+	}
 
 	void resumeIfNeeded(char const* settingKey) {
 		if (!m_fields->m_sentPause) return;
@@ -106,29 +142,40 @@ $on_game(Loaded) {
 	});
 }
 
-// Pause-menu button
+// Save the percent per level whenever it's changed while inside a level
+$on_mod(Loaded) {
+	listenForSettingChanges("percent", [](int64_t value) {
+		if (value == s_lastApplied) return;   // our own change
+		auto pl = PlayLayer::get();
+		if (!pl || !pl->m_level) return;      // not in a level
+		auto key = levelKeyFor(pl->m_level);
+		if (key.empty()) return;
+		Mod::get()->setSavedValue<int64_t>("level-percent-" + key, value);
+		s_lastApplied = value;
+	});
+
+	// If the default changes while in a level that has no saved percent, follow it
+	listenForSettingChanges("default-percent", [](int64_t) {
+		auto pl = PlayLayer::get();
+		if (pl && pl->m_level) applyPercentForLevel(pl->m_level);
+	});
+}
+
+// Pause-menu button: opens this mod's settings
 class $modify(FirefoxPausePauseLayer, PauseLayer) {
 	void customSetup() {
 		PauseLayer::customSetup();
 
-		CCMenuItemToggler* toggle = nullptr;
-		auto onSpr = CCSprite::createWithSpriteFrameName("GJ_musicOnBtn_001.png");
-		auto offSpr = CCSprite::createWithSpriteFrameName("GJ_musicOffBtn_001.png");
-		if (onSpr && offSpr) {
-			onSpr->setScale(0.8f);
-			offSpr->setScale(0.8f);
-			toggle = CCMenuItemToggler::create(
-				offSpr, onSpr, this, menu_selector(FirefoxPausePauseLayer::onToggleFirefoxPause)
-			);
-		}
-		else {
-			// sprite frames not found: fall back to the standard checkbox
-			toggle = CCMenuItemToggler::createWithStandardSprites(
-				this, menu_selector(FirefoxPausePauseLayer::onToggleFirefoxPause), 0.7f
-			);
-		}
-		toggle->toggle(Mod::get()->getSettingValue<bool>("enabled"));
-		toggle->setID("firefox-pause-toggle"_spr);
+		CCSprite* spr = CCSprite::createWithSpriteFrameName("GJ_musicOnBtn_001.png");
+		if (!spr) spr = ButtonSprite::create("FP");
+		spr->setScale(0.8f);
+		// dim the icon while the mod is turned off
+		if (!Mod::get()->getSettingValue<bool>("enabled")) spr->setOpacity(120);
+
+		auto btn = CCMenuItemSpriteExtra::create(
+			spr, this, menu_selector(FirefoxPausePauseLayer::onFirefoxPauseSettings)
+		);
+		btn->setID("firefox-pause-settings"_spr);
 
 		CCNode* menu = this->getChildByID("right-button-menu");
 		if (!menu) {
@@ -139,12 +186,11 @@ class $modify(FirefoxPausePauseLayer, PauseLayer) {
 			this->addChild(newMenu);
 			menu = newMenu;
 		}
-		menu->addChild(toggle);
+		menu->addChild(btn);
 		menu->updateLayout();
 	}
 
-	void onToggleFirefoxPause(CCObject*) {
-		// the toggler flips its own visual; we just flip the setting
-		toggleFirefoxPause();
+	void onFirefoxPauseSettings(CCObject*) {
+		openSettingsPopup(Mod::get(), false);
 	}
 };

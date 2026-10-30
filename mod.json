@@ -23,8 +23,20 @@
 		},
 		"percent": {
 			"type": "int",
-			"name": "Pause at percent",
-			"description": "Pause Firefox once you reach this percent.",
+			"name": "Pause at percent (current level)",
+			"description": "Percent at which Firefox pauses in the level you're playing. It's remembered separately for each level.",
+			"default": 50,
+			"min": 1,
+			"max": 100,
+			"control": {
+				"slider": true,
+				"input": true
+			}
+		},
+		"default-percent": {
+			"type": "int",
+			"name": "Default percent (new levels)",
+			"description": "Used for levels you haven't set a percent for yet.",
 			"default": 50,
 			"min": 1,
 			"max": 100,
